@@ -1,0 +1,40 @@
+---
+title: "Sample POV Data Review"
+author: "Jamie Robertson"
+output:
+  html_document: default
+date: 'Jan. 25, 2023'
+subtitle: Capstone
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+options(show.signif.stars = FALSE)
+library(tidyverse,warn.conflicts = F)
+library(tidymodels,warn.conflicts = F)
+library(lubridate,warn.conflicts = F)
+library(tidyr)
+knitr::opts_chunk$set(echo = TRUE)
+
+#Read in the data
+d.soup <- read_csv("SampleData-SoupKitchen.csv")
+d.hmis <- read_csv("SampleData-EmergencyShelter.csv")
+```
+
+The data source: Poverello Center
+
+Assupmtions: 
+1. d.soup is data collected The Pov
+2. d.hmis is data collected by HMIS
+3. Client ID is a primary key that can tie the data together. 
+
+
+
+```{r setup, include=FALSE}
+
+
+
+```
+
+
