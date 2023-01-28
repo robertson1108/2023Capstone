@@ -3,7 +3,7 @@ title: "Sample POV Data Review"
 author: "Jamie Robertson"
 output:
   html_document: default
-date: 'Jan. 25, 2023'
+date: 'Jan. 2023'
 subtitle: Capstone
 
 ---
@@ -11,29 +11,76 @@ subtitle: Capstone
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 options(show.signif.stars = FALSE)
+library(knitr)
+library(readr)
+library(mosaic)
+#library(effects)
+library(car)
+
+
 library(tidyverse,warn.conflicts = F)
 library(tidymodels,warn.conflicts = F)
 library(lubridate,warn.conflicts = F)
 library(tidyr)
 knitr::opts_chunk$set(echo = TRUE)
-
-#Read in the data
-d.soup <- read_csv("SampleData-SoupKitchen.csv")
-d.hmis <- read_csv("SampleData-EmergencyShelter.csv")
 ```
 
-The data source: Poverello Center
 
-Assupmtions: 
+The data source: Poverello Center
+Data dictionary for HMIS data: https://files.hudexchange.info/resources/documents/HMIS-Data-Dictionary.pdf
+
+
+```{r}
+#Read in the data
+d.soup <- read_csv("C:\\Users\\jamie\\OneDrive\\Documents\\Capstone\\SampleData-SoupKitchen.csv")
+d.hmis <- read_csv("C:\\Users\\jamie\\OneDrive\\Documents\\Capstone\\SampleData-EmergencyShelter.csv")
+```
+
+
+
+Assumptions in the data, need to confirm 1&2 in Pov: 
 1. d.soup is data collected The Pov
 2. d.hmis is data collected by HMIS
 3. Client ID is a primary key that can tie the data together. 
 
+Assumptions for LR:
+1. independence
+2. linearity of relationship
+3. multicollinearity effects checked for
+4. equal variance and normality of residuals
+5. no influential points 
 
 
-```{r setup, include=FALSE}
+#Exploring the data
+Looking at the first 6 rows of each database. 
+
+```{r, include=FALSE}
+
+head(d.hmis)
 
 
+```
+
+
+
+
+```{r}
+head(d.soup)
+```
+
+n_distinct(d.hmis$`Client ID`, na.rm = FALSE)
+# 407
+
+n_distinct(d.soup$'Client ID', na.rm = FALSE)
+# 1488
+
+```{r}
+
+n_distinct(d.hmis$`Client ID`, na.rm = FALSE)
+# 407
+
+n_distinct(d.soup$'Client ID', na.rm = FALSE)
+# 1488
 
 ```
 
