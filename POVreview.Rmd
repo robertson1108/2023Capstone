@@ -15,8 +15,9 @@ library(knitr)
 library(readr)
 library(mosaic)
 #library(effects)
+library(graphics)
 library(car)
-
+library(MuMIn)
 
 library(tidyverse,warn.conflicts = F)
 library(tidymodels,warn.conflicts = F)
@@ -30,23 +31,13 @@ The data source: Poverello Center
 Data dictionary for HMIS data: https://files.hudexchange.info/resources/documents/HMIS-Data-Dictionary.pdf
 
 
-```{r}
+```{r show_col_types = FALSE}
 #Read in the data
 
-d.soup <- read_csv("C:\\Users\\jamie\\OneDrive\\Documents\\Capstone\\EmergencyShelter-FoodTransactions.csv")
-
-d.service <- read_csv("C:\\Users\\jamie\\OneDrive\\Documents\\Capstone\\serve_count.csv")
-
-#d.hmis <- read_csv("C:\\Users\\jamie\\OneDrive\\Documents\\Capstone\\SampleData-EmergencyShelter.csv")
+d.pov <- read_csv("C:\\Users\\jamie\\OneDrive\\Documents\\Capstone\\povdata.csv", show_col_types = FALSE)
 
 ```
 
-
-
-Assumptions in the data, need to confirm 1&2 in Pov: 
-1. d.soup is data collected The Pov
-2. d.hmis is data collected by HMIS
-3. Client ID is a primary key that can tie the data together. 
 
 Assumptions for LR:
 1. independence
@@ -59,130 +50,72 @@ Assumptions for LR:
 #Exploring the data
 Looking at the first 6 rows of each database. 
 
-```{r, include=FALSE}
+```{r}
 
-head(d.hmis)
-
+head(d.pov)
 
 ```
 
-
+This analysis will review veteran status, primary and secondary race, ethnicity, length of stay, gender, if the client is insured, disabled, their date of birth and the date their homeless experience started, their date of birth, the first date of engagement with the system, the total number of months they have been homeless in the past three years, the number of times they have been on the streets or in the shelters in the past three years, their total monthly income, if they receive income from any source and if they receive a non-cash benefit from any source.
 
 
 ```{r}
-head(d.soup)
-```
-
-n_distinct(d.hmis$`Client ID`, na.rm = FALSE)
-# 407
-
-n_distinct(d.soup$'Client ID', na.rm = FALSE)
-# 1488
-
-```{r}
-
-n_distinct(d.hmis$`Client ID`, na.rm = FALSE)
-
-
-n_distinct(d.soup$'Client ID', na.rm = FALSE)
-
-
-```
-
-Here, I am going to only variables of interest in and and pull them in as factors
-
-```{r}
-
-d <-
-  d.soup %>%
-  mutate(
-    Gender = factor(Gender...6)) %>% 
-  mutate(
-    race = factor(`Primary Race...7`)) %>%
-  mutate(
-    dv = factor(`Domestic Violence Victim or Survivor`)) %>%
-  mutate(
-    insured = factor(`Covered by Health Insurance` )) %>%
-  mutate(
-    dc = factor(`Disabling Condition`)) %>%
-  mutate(
-    dvo = factor(d.soup$`Length of Stay`)) %>%
-  mutate(
-    lessthan7 = factor(d.soup$`Did you stay less than 7 nights?`)) %>%
-  mutate(
-    lessthan90 = factor(d.soup$`Did you stay less than 90 days?`)) %>% 
-  #mi == d.soup$`Total Monthly Income` %>%
-  mutate( 
-    ethnicity = factor(d.soup$`Ethnicity`)) %>%
-  mutate(
-    secrace = factor(d.soup$`Secondary Race`)) %>%
-  mutate( 
-    income = factor(d.soup$`Income from Any Source`)) %>%
-  mutate(
-    bene = factor(d.soup$`Non-cash benefit from any source`)) %>%
-  mutate(
-    sitch = factor(d.soup$`Prior Living Situation`)) %>%
-  mutate(
-    plS = factor(d.soup$`Prior Living Situation`))
+d.pov <- d.pov %>% 
+  mutate(totserv=efood_count+wfood_count+eother_count+wother_count)
   
-  
+```
 
+Using Google Big Query, the count of services provided was summed up for each location and type. Two types of services are available for clients at two locations, Food or Basic Needs. Most individuals are receiving food. These counts were combined in R to be totserv which we will take a closer look at.
+
+```{r}
+
+hist(d.pov$totserv)
 
 
 ```
 
+The distribution is heavily skewed. Another way to look at the distribution is using summary statistics and percentiles. 
 
-
-
-Description has two factors, Food or Basic Needs. Most individuals are receiving food. 
-Same Provider Creating for all entries
-
-Primary race has 9 factors
-
-Domestic Violence Victim or Survivor has 6 factors
-
-Client location is the same for all entries or NA. 
-
-Covered by Health Insurance has 6 variables.
-
-Disabling Condition has 6 factors.
-
-There are 8 factors for When dv experience occured.
-
-
-There are 6 factors in currently fleeing dv. 
-
-  Length of stay is categorical with 10 categories.
- 
-  Did you stay less than 7 nights has yes, no, na. 
-`
-    Did you stay less than 90 days has yes, no, na. 
-
-On the night before did you stay on the streets, ES or SH has yes, no, na. 
-
-Relationship to head of household has 7 factors but responses are primarily Self, distantly followed by NA. 
-
-Total monthly income is the only natively quantitative variable. 
-
-There are 24362 full dob's reported according to Date of Birth Type. 
-
-Ethnicity is 6 factors for Hispanic/Non-Hispanic
-
-The gender field is duplicated. 
-Race field duplicated. 
-
-Secondary race has the same fields as race.
-
-Income from any source is a yes or no question. 
-
-`Non-cash benefit from any source` is a yes or no question
 
 ```{r}
 
-d.service %>%
-  pull(service_count) %>%
+d.pov %>%
+  pull(totserv) %>%
   summary()
 
 
 ```
+
+```{r}
+quantile(d.pov$totserv, probs = seq(.1, .9, by =.1))
+```
+```{r}
+d <-
+  d.pov %>%
+  mutate(
+    race = factor(race)
+  )
+
+d %>%
+  pull(race) %>%
+  summary()
+```
+
+Running a practice linear regression 
+
+```{r}
+# Remove rows where there is any missing data
+#nhanes_subset_complete <- na.omit(nhanes_subset) 
+library(MuMIn)
+# Now refit the full model with only complete cases
+fullModel <- lm(totserv ~ vet + race + eth +
+                  gen + dvs + insured +   
+                  los + disabled + any_income + 
+                prior_situation, data=d.pov)
+options(na.action="na.fail", width=120)
+povOutput <- dredge(fullModel, 
+       extra=c("R^2",adjRsq=function(x) summary(x)$adj.r.squared))
+kable(head(povOutput,n=15),caption="Table 6: POV Table", digits=3)
+```
+
 
