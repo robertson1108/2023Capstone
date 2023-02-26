@@ -5,6 +5,9 @@ output:
   html_document: default
 date: 'Jan. 2023'
 subtitle: Capstone
+bibliography: cap.bib
+nocite: '@*'
+
 
 ---
 

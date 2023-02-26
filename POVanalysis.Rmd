@@ -1,0 +1,187 @@
+---
+title: "Pov_Capstone"
+author: "Jamie Robertson"
+date: "2023-02-20"
+output: html_document
+subtitle: Capstone project re The Poverello Center
+bibliography: cap.bib
+nocite: '@*'
+
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE)
+options(show.signif.stars = FALSE)
+library(knitr)
+library(NHANES)
+library(readr)
+library(mosaic)
+library(heplots)
+library(psych)
+library(car)
+library(Sleuth3)
+library(coneproj)
+library(MuMIn)
+
+knitr::write_bib(c("base","rmarkdown","knitr", #don't change these
+                   "NHANES","mosaic","psych","car","MuMIn"), #project specific before the close parenthesis
+                   "cap.bib", width=60)
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Introduction/Background
+
+The data source: Poverello Center
+Data dictionary for HMIS data: https://files.hudexchange.info/resources/documents/HMIS-Data-Dictionary.pdf
+The point of this analysis is to use Akaike's "An Information Criterion" method to select the appropriate model to answer the research question.  This method is also known as AIC model selection.
+
+This paper is an analytical approach to social science subject matter. The population of Missoula Montana experiencing or at risk of becoming homeless and are clients of The Poverello Center provided the data for the following analysis. 
+
+
+```{r show_col_types = FALSE}
+#Read in the data
+
+d.pov <- read_csv("C:\\Users\\jamie\\OneDrive\\Documents\\Capstone\\povdata.csv", show_col_types = FALSE)
+
+```
+##Overview
+
+The HMIS data from the Pov contains many demographic variables including vet status, race, income, weather or not the client holds insurance, if the client is handicapped, etc. The number of unique individuals included in the data started as 2383. There were over 50,000 service transactions. These observations were collected November 2021 through December 2022 in Missoula, Montana. The variables used in this analysis are listed explained more thoroughly in Appendix I. 
+
+Throughout the paper, the terms unhoused, people experiencing houselessness, clients are all discussing the same sample population of individuals in and around Missoula who are (1)at risk of being, or (2)currently are, without a traditional structural house or street address.  
+
+The Pov provides three services to clients: food, emergency food, and basic needs. These three services are provided at two locations. When a client receives a service a transaction record is created. The sum of these services an individual received has been sumed and will be the dependent variable in this analysis. 
+
+
+```{r add_counts, echo=FALSE}
+
+d.pov <- d.pov %>% 
+  mutate(totserv=efood_count+wfood_count+eother_count+wother_count)
+
+hist(d.pov$totserv)
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+##Context
+
+
+##Literature review for analytical projects
+Affordable housing in Montana (umt.edu)
+Addressing homelessness solutions with data analytics | Deloitte Insights
+
+Data from HMIS is broadly available and there are several studies that utilize it for research. The topic of this report is very narrow in scale and is looking specifically at the the population of clients who utilize The Pov's services. 
+
+The highest percentile will ofcourse be the clients who stay longer and have a higher cost. With limited resources available...The top 10% consumed 45.5% of the services of the Pov in the time frame provided. 
+
+```{r}
+
+quantile(d.pov$totserv, probs = seq(.1, .9, by =.1))
+
+```
+
+
+##Best Practices for Data Cleaning
+Predictive risk modeling for top 10% users of homeless services at The Poverello Center in Missoula Montana.
+
+##Research questions
+
+What are the most important variables to use in a model to explain high service counts a person has for services received from The Poverello Center?
+
+Predictive risk modeling for top 10% users of homeless services in Missoula Montana. 
+
+##Data
+Client ID - the primary key in the tables and is a unique identifier for clients in the Pov’s database.
+Date of Birth – The date of birth of a client
+Gender – For this study, gender will be reduced to three categories: male (1), female (2), and other (3). 
+U.S. Miltary Vet? – This variable captures the veteran status of a client. Unless the client reports being a Vet, the status is 0. If the client reports being a vet, the value is 1. 
+
+Primary Race – This is a factor variable. As identified by HUD, the categories are American Indian, Alaska Native, or Indigenous, Asian or Asian American, Black, African American, or African, Native Hawaiian or Pacific Islander, and White. These categories are represented in the data as 1-5 respectively. Entries that did not have primary race data was generally missing a variety of other data fields and was removed from the data set. 
+
+Ethnicity – This is a binary variable shows if the client is reported to be Hispanic or latin(o/a/x).
+
+Domestic Violence Victim or Survivor - This is a binary variable shows if the client is reported to be a survivor or victim of domestic violence. 
+
+Covered by Health Insurance – This is a binary variable that show if the client covered by health insurance. 
+
+Disabling Condition – This is a binary variable that shows if the client has a disabling condition. 
+
+Approximate date homelessness started – This is the approximate date homelessness started for the client. Just over half of the clients don’t have this information reported. 
+
+Length of Stay – This is a categorical variable that includes: One night or less, two to six nights, one week or more but less than one month, One month or more but less than 90 days, 90 days or more but less than 1 year, one year or longer, Data not collected, client refused, and client doesn’t know. 
+Total Monthly income – This is a quantitative variable for a client’s total monthly income. Over half of the clients don’t have this information reported. 
+
+Income from Any Source – This binary variable for if the client has any source of income. 
+
+Non-cash benefit from any source – This is a binary variable for if the client receives a non-cash benefit from any source.
+
+Date of Engagement – This is the first date the client engaged with the HMIS system. Over half of the clients do not have this information reported. 
+
+Prior Living Situation – There are 25 categories in the categorical variable that were reduced in order to make some categories broader. The categories now represented in the data are: Owned by client w or wo subsidy, Care facility including hospital, nursing home, and psychiatric facility, Rental by client with subsidy or voucher, Rental by client, Host home/Interim housing/Foster care, Emergency shelter, incl. hotel/motel paid for w/ ES voucher, or RHY-funded Host Home shelter, Staying or living with a friend, Staying or living with family, Residential project halfway house or Safe Haven, and Permanent or transitional housing for homeless persons. 
+
+After the data was cleaned, it was uploaded into GBQ and a SQL query was used to combine the client data with the food transaction data from the two locations. 
+
+
+```{r}
+
+```
+
+
+##Code explanations
+
+The point of this analysis is to use Akaike's "An Information Criterion" method to select the appropriate model to answer the research question.  This method is also known as AIC model selection.  
+The point of the analysis is to determine the most important variables to use in a model to explain the amount of services used by a client. This paper reviews some descriptive statistics from the data that utilizes AIC to pick the best model.
+
+
+Total Count of Services will be the response variable.  This variable will be identified as TotServ and measures a client consumption of services. This is a quantitative variable. Veteran status is included as vet ...
+
+#### Data Summaries
+
+As noted above and described below in Table 1, the quantitative variables are age,.... The standard deviation of TotServ is 1.062, the mean is 5.053, and the shape is right skewed. The count of catagorical variables
+
+```{r}
+variableNames <- c("mo_income","efood_count","eother_count",
+                   "wfood_count","wother_count","totserv")
+kable(describe(d.pov[,variableNames])[,-c(1,6:7,11:12)], digits=3,
+      caption="Table 1. Summary Statistics of Quantitative Variables")
+```
+
+
+##Analysis (for analytical projects)
+
+```{r}
+
+library(MuMIn)
+# Now refit the full model with only complete cases
+fullModel <- lm(totserv ~ vet + race + eth +
+                  gen + dvs + insured +   
+                  los + disabled + any_income + 
+                prior_situation, data=d.pov)
+options(na.action="na.fail", width=120)
+povOutput <- dredge(fullModel,  rank="AIC",
+       extra=c("R^2",adjRsq=function(x) summary(x)$adj.r.squared))
+kable(head(povOutput,n=15),caption="Table 6: POV Table", digits=3)
+
+```
+
+
+
+##Visualizations
+
+##Limitations
+
+##Recommendations
+
+##Conclusion
+
+
+
+##Executive Summary
+  
+#Findings
+#Next Steps  
