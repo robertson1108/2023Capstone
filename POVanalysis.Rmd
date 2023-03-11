@@ -44,7 +44,7 @@ This paper is an analytical approach to social science subject matter. The popul
 ```{r show_col_types = FALSE}
 #Read in the data
 
-d.pov <- read_csv("C:\\Users\\jamie\\OneDrive\\Documents\\Capstone\\povdata.csv", show_col_types = FALSE)
+d.pov <- read_csv("C:\\Users\\jamie\\OneDrive\\Documents\\Capstone\\LRdata.csv", show_col_types = FALSE)
 
 ```
 ##Overview
@@ -53,7 +53,7 @@ The HMIS data from the Pov contains many demographic variables including vet sta
 
 Throughout the paper, the terms unhoused, people experiencing houselessness, clients are all discussing the same sample population of individuals in and around Missoula who are (1)at risk of being, or (2)currently are, without a traditional structural house or street address.  
 
-The Pov provides three services to clients: food, emergency food, and basic needs. These three services are provided at two locations. When a client receives a service a transaction record is created. The sum of these services an individual received has been sumed and will be the dependent variable in this analysis. 
+The Pov provides three services to clients: food, emergency food, and basic needs. These three services are provided at two locations. When a client receives a service a transaction record is created. The sum of these services an individual received has been summed and will be the dependent variable in this analysis. 
 
 
 ```{r add_counts, echo=FALSE}
@@ -128,8 +128,10 @@ After the data was cleaned, it was uploaded into GBQ and a SQL query was used to
 
 
 ```{r}
+d.pov %>% 
+  select
 
-```
+```    
 
 
 ##Code explanations
@@ -145,7 +147,7 @@ Total Count of Services will be the response variable.  This variable will be id
 As noted above and described below in Table 1, the quantitative variables are age,.... The standard deviation of TotServ is 1.062, the mean is 5.053, and the shape is right skewed. The count of catagorical variables
 
 ```{r}
-variableNames <- c("mo_income","efood_count","eother_count",
+variableNames <- c("Age_", "months_from_start", "income","efood_count","eother_count",
                    "wfood_count","wother_count","totserv")
 kable(describe(d.pov[,variableNames])[,-c(1,6:7,11:12)], digits=3,
       caption="Table 1. Summary Statistics of Quantitative Variables")
@@ -154,14 +156,25 @@ kable(describe(d.pov[,variableNames])[,-c(1,6:7,11:12)], digits=3,
 
 ##Analysis (for analytical projects)
 
+
+```{r}
+#fill in the blanks with zeros
+setzero()
+
+```
+
+
+
+
 ```{r}
 
 library(MuMIn)
 # Now refit the full model with only complete cases
-fullModel <- lm(totserv ~ vet + race + eth +
-                  gen + dvs + insured +   
-                  los + disabled + any_income + 
-                prior_situation, data=d.pov)
+fullModel <- lm(totserv ~ Age_ + months_from_start + vet + race_white + race_black + race_native + race_asian + eth_hispanic +
+                  females + transgender + males + dviolencesurvivor + insured +   
+                  lenstay_1 + lenstay_2to6 + lenstay_wktomo + lenstay_1to3mo + lenstay_3to12mo + lenstay_1yrplus + disabled + 
+                  income + 
+                hasbenefit, data=d.pov)
 options(na.action="na.fail", width=120)
 povOutput <- dredge(fullModel,  rank="AIC",
        extra=c("R^2",adjRsq=function(x) summary(x)$adj.r.squared))
@@ -169,9 +182,128 @@ kable(head(povOutput,n=15),caption="Table 6: POV Table", digits=3)
 
 ```
 
+##Decision Tree
+
+```{r}
+#create decision tree using rpart
+#This is your model!
+fit <- rpart(Class ~ Cl.thickness, method="class", data=boobs.train)
+
+#This line of code assigns the variable called depvariable to the name of the dependent variable
+#in the model above.  We will use this variable below in the ROC curve code.  Change "Class" to the 
+#name of your dependent variable.
+depvariable <- "Class"
+
+#Important:  Please read this.
+#At this point, check the fit variable in RStudio.  If it is >=14 then you are good.
+#If it is 12 or less then you did not build a tree.  Basically R doesn't think that that the tree can
+#be split based on the x-variables you used.  At this point you must change your model before you 
+#can continue
+
+
+#Display decision tree
+plot(fit, uniform = TRUE, margin=.05)
+text(fit, use.n=TRUE, all=TRUE, cex=0.6)
+
+#A fancy plot if you prefer this one instead
+prp(fit, type=2, extra=104)
+
+
+#predict the outcome using the test dataset
+pred1 <- predict(fit, boobs.test, type="class")
+
+#Place the prediction variable back in the test dataset
+boobs.test$pred1 <- pred1
+
+#Display Confusion Matrix - this is the correct display of the table. 
+#Change the name of Class to the dependent variable
+rtable<-table(boobs.test$Class,boobs.test$pred1, dnn=c("Actual", "Predicted"))
+rtable
+
+#Display accuracy rate
+#Change the name of Class to the dependent variable
+sum(boobs.test$Class==pred1)/length(pred1)
+
+#true positive rate:
+tpr <- sum(rtable[2,2])/sum(rtable[2,])
+
+#false positive rate:
+fpr <- sum(rtable[1,2])/sum(rtable[1,])
+
+
+
+```
 
 
 ##Visualizations
+
+##Roc Curve
+
+```{r}
+######
+#ROC Curve
+#The only think you need to change below is: 
+#1) the name of your datasets. For example, boobs.test$ below should be the name of your testing dataset.  
+#2) On lines 99 and 100, the 1 and 0 should reflect the values of your depedent variable.
+######
+
+# for ROC curve we need probabilties so we can sort boobs.test
+boobs.test$probs <- predict(fit,boobs.test, type="prob")[,2] # returns prob of both cats, just need 1
+
+roc.data <- data.frame(cutoffs = c(1,sort(unique(boobs.test$probs),decreasing=T)),
+                       TP.at.cutoff = 0,
+                       TN.at.cutoff = 0)
+
+for(i in 1:dim(roc.data)[1]){
+  this.cutoff <- roc.data[i,"cutoffs"]
+  roc.data$TP.at.cutoff[i] <- sum(boobs.test[boobs.test$probs >= this.cutoff,depvariable] == malignant)
+  roc.data$TN.at.cutoff[i] <- sum(boobs.test[boobs.test$probs < this.cutoff,depvariable] == benign)
+}
+roc.data$TPR <- roc.data$TP.at.cutoff/max(roc.data$TP.at.cutoff) 
+roc.data$Specificity <- roc.data$TN.at.cutoff/max(roc.data$TN.at.cutoff) 
+roc.data$FPR <- 1 - roc.data$Specificity
+
+with(roc.data,
+     plot(x=FPR,
+          y=TPR,
+          type = "l",
+          xlim=c(0,1),
+          ylim=c(0,1),
+          main="ROC Curve'")     
+)
+abline(c(0,1),lty=2)
+######End ROC code
+
+######
+
+# for ROC curve we need probabilties so we can sort boobs.test
+boobs.test$probs <- predict(fit,boobs.test, type="prob")[,2] # returns prob of both cats, just need 1
+
+roc.data <- data.frame(cutoffs = c(1,sort(unique(boobs.test$probs),decreasing=T)),
+                       TP.at.cutoff = 0,
+                       TN.at.cutoff = 0)
+
+for(i in 1:dim(roc.data)[1]){
+  this.cutoff <- roc.data[i,"cutoffs"]
+  roc.data$TP.at.cutoff[i] <- sum(boobs.test[boobs.test$probs >= this.cutoff,depvariable] == malignant)
+  roc.data$TN.at.cutoff[i] <- sum(boobs.test[boobs.test$probs < this.cutoff,depvariable] == benign)
+}
+roc.data$TPR <- roc.data$TP.at.cutoff/max(roc.data$TP.at.cutoff) 
+roc.data$Specificity <- roc.data$TN.at.cutoff/max(roc.data$TN.at.cutoff) 
+roc.data$FPR <- 1 - roc.data$Specificity
+
+with(roc.data,
+     plot(x=FPR,
+          y=TPR,
+          type = "l",
+          xlim=c(0,1),
+          ylim=c(0,1),
+          main="ROC Curve'")     
+)
+abline(c(0,1),lty=2)
+######End ROC code
+
+```
 
 ##Limitations
 
