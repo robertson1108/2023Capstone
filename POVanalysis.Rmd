@@ -39,10 +39,14 @@ knitr::opts_chunk$set(echo = TRUE)
 
 The data source: Poverello Center
 Data dictionary for HMIS data: https://files.hudexchange.info/resources/documents/HMIS-Data-Dictionary.pdf
-The point of this analysis is to use Akaike's "An Information Criterion" method to select the appropriate model to answer the research question.  This method is also known as AIC model selection.
+The point of this analysis is to use benefit The Poverello Center (The Pov). This is a detail review of the data and exploratory analysis. The Pov hopes to utilize their data to identify individuals who are likely to be in the top percentile of clients. 
 
-This paper is an analytical approach to social science subject matter. The population of Missoula Montana experiencing or at risk of becoming homeless and are clients of The Poverello Center provided the data for the following analysis. 
 
+##Research questions
+
+What are the most important variables to use in a model to explain high service counts a person has for services received from The Poverello Center?
+
+Predictive risk modeling for top 20% users of homeless services in Missoula Montana. 
 
 ```{r show_col_types = FALSE}
 #Read in the data
@@ -52,12 +56,12 @@ d.pov <- read_csv("C:\\Users\\jamie\\OneDrive\\Documents\\Capstone\\LRdata.csv",
 ```
 ##Overview
 
-The HMIS data from the Pov contains many demographic variables including vet status, race, income, weather or not the client holds insurance, if the client is handicapped, etc. The number of unique individuals included in the data started as 2383. There were over 50,000 service transactions. These observations were collected November 2021 through December 2022 in Missoula, Montana. The variables used in this analysis are listed explained more thoroughly in Appendix I. 
+The HMIS data from The Pov contains many demographic variables including vet status, race, income, weather or not the client holds insurance, if the client is handicapped, etc. The number of unique individuals included in the data started as 2383. There were over 50,000 service transactions. These observations were collected November 2021 through December 2022 in Missoula, Montana. The variables used in this analysis are listed explained more thoroughly in Appendix I of the associated paper. 
+```{r}
+head(d.pov)
+```
 
-Throughout the paper, the terms unhoused, people experiencing houselessness, clients are all discussing the same sample population of individuals in and around Missoula who are (1)at risk of being, or (2)currently are, without a traditional structural house or street address.  
-
-The Pov provides three services to clients: food, emergency food, and basic needs. These three services are provided at two locations. When a client receives a service a transaction record is created. The sum of these services an individual received has been summed and will be the dependent variable in this analysis. 
-
+These variables may be useful in a linear regression. The sum of services provided to a client is the dependent variable. In the cell below the counts of all services recieved by an individual and added to the dataframe. 
 
 ```{r add_counts, echo=FALSE}
 
@@ -73,14 +77,7 @@ Note that the `echo = FALSE` parameter was added to the code chunk to prevent pr
 
 ##Context
 
-
-##Literature review for analytical projects
-Affordable housing in Montana (umt.edu)
-Addressing homelessness solutions with data analytics | Deloitte Insights
-
-Data from HMIS is broadly available and there are several studies that utilize it for research. The topic of this report is very narrow in scale and is looking specifically at the the population of clients who utilize The Pov's services. 
-
-The highest percentile will ofcourse be the clients who stay longer and have a higher cost. With limited resources available...The top 10% consumed 45.5% of the services of the Pov in the time frame provided. 
+The highest percentile will be the clients who stay in a homeless or at risk for a longer period of time. The top 10% consumed 45.5% of the services of the Pov in the time frame provided. 
 
 ```{r}
 
@@ -90,49 +87,12 @@ quantile(d.pov$totserv, probs = seq(.1, .9, by =.1))
 
 
 ##Best Practices for Data Cleaning
-Predictive risk modeling for top 10% users of homeless services at The Poverello Center in Missoula Montana.
 
 The data came in 4 files, a set of two from each location of the Pov. One set from the Winter Shelter which operation depends on the weather but mostly is open from November to April, one set from the Emergency Shelter that is open all year. The client files were combined and duplicates were removed in excel. A column to calculate age based on the date of birth was also entered in excel.
 
-Many entries were missing portions of the data. After matching the Client_ID with transactions. I need to deal with so many null values. Luckily, many of the variables in the data are binary variables. Using Google Big Query and SQL were used to combine the client data with the food transaction data from the two locations. The data was transformed there to 1's and 0's. This approach turned missing data to false for the following variables:  This code can be found in the appendix. After using this approach to deal with null values, there are 277 complete rows of data. This number can be improved. 
+Many entries were missing portions of the data. After matching the Client_ID with transactions. I need to deal with so many null values. Luckily, many of the variables in the data are binary variables. Using Google Big Query and SQL were used to combine the client data with the food transaction data from the two locations. The data was transformed there to 1's and 0's. This approach turned missing data to false for the following variables: female, male, transgender, veteran status, race_white, race_black, race_native, race_asian, ethnically hispanic, domestic violence survivor, covered by health insurance, has a disabling condition, if they have stayed one night, two to six nights, one week to a month, one to three months, three months to a year, or a year and over, if they are the head of household, reported a second race, has income from any source, or recieves a non-cash benefit.  This code can be found in the appendix of the associated paper. 
 
-A couple variables including months_from_start and income had null values that need to be addressed before analysis.   
-After 
-
-##Research questions
-
-What are the most important variables to use in a model to explain high service counts a person has for services received from The Poverello Center?
-
-Predictive risk modeling for top 10% users of homeless services in Missoula Montana. 
-
-##Data
-Client ID - the primary key in the tables and is a unique identifier for clients in the Pov’s database.
-Date of Birth – The date of birth of a client
-Gender – For this study, gender will be reduced to three categories: male (1), female (2), and other (3). 
-U.S. Miltary Vet? – This variable captures the veteran status of a client. Unless the client reports being a Vet, the status is 0. If the client reports being a vet, the value is 1. 
-
-Primary Race – This is a factor variable. As identified by HUD, the categories are American Indian, Alaska Native, or Indigenous, Asian or Asian American, Black, African American, or African, Native Hawaiian or Pacific Islander, and White. These categories are represented in the data as 1-5 respectively. Entries that did not have primary race data was generally missing a variety of other data fields and was removed from the data set. 
-
-Ethnicity – This is a binary variable shows if the client is reported to be Hispanic or latin(o/a/x).
-
-Domestic Violence Victim or Survivor - This is a binary variable shows if the client is reported to be a survivor or victim of domestic violence. 
-
-Covered by Health Insurance – This is a binary variable that show if the client covered by health insurance. 
-
-Disabling Condition – This is a binary variable that shows if the client has a disabling condition. 
-
-Approximate date homelessness started – This is the approximate date homelessness started for the client. Just over half of the clients don’t have this information reported. 
-
-Length of Stay – This is a categorical variable that includes: One night or less, two to six nights, one week or more but less than one month, One month or more but less than 90 days, 90 days or more but less than 1 year, one year or longer, Data not collected, client refused, and client doesn’t know. 
-Total Monthly income – This is a quantitative variable for a client’s total monthly income. Over half of the clients don’t have this information reported. 
-
-Income from Any Source – This binary variable for if the client has any source of income. 
-
-Non-cash benefit from any source – This is a binary variable for if the client receives a non-cash benefit from any source.
-
-Date of Engagement – This is the first date the client engaged with the HMIS system. Over half of the clients do not have this information reported. 
-
-Prior Living Situation – There are 25 categories in the categorical variable that were reduced in order to make some categories broader. The categories now represented in the data are: Owned by client w or wo subsidy, Care facility including hospital, nursing home, and psychiatric facility, Rental by client with subsidy or voucher, Rental by client, Host home/Interim housing/Foster care, Emergency shelter, incl. hotel/motel paid for w/ ES voucher, or RHY-funded Host Home shelter, Staying or living with a friend, Staying or living with family, Residential project halfway house or Safe Haven, and Permanent or transitional housing for homeless persons. 
+The variable that holds the total number of months an individual has been homeless contains many null values. This variable was removed and complete cases were consolidated. There are 347 complete rows of data.  
 
 
 
@@ -140,7 +100,6 @@ Prior Living Situation – There are 25 categories in the categorical variable t
 
 #Deal with null values
 d <-   select(d.pov, Age_,
-         months_from_start, 
          females, 
          transgender, 
          males, 
@@ -174,14 +133,6 @@ d.complete <- d[complete.cases(d),]
 ```    
 
 
-##Code explanations
-
-The point of this analysis is to use Akaike's "An Information Criterion" method to select the appropriate model to answer the research question.  This method is also known as AIC model selection.  
-The point of the analysis is to determine the most important variables to use in a model to explain the amount of services used by a client. This paper reviews some descriptive statistics from the data that utilizes AIC to pick the best model.
-
-
-Total Count of Services will be the response variable.  This variable will be identified as TotServ and measures a client consumption of services. This is a quantitative variable. Veteran status is included as vet ...
-
 #### Data Summaries
 
 As noted above and described below in Table 1, the quantitative variables are age,.... The standard deviation of TotServ is 1.062, the mean is 5.053, and the shape is right skewed. The count of catagorical variables
@@ -194,12 +145,23 @@ kable(describe(d.pov[,variableNames])[,-c(1,6:7,11:12)], digits=3,
 ```
 
 
-##Analysis (for analytical projects)
+
+##Code explanations
+
+
+
+The point of this analysis is to use Akaike's "An Information Criterion" method to select the appropriate model to answer the research question.  This method is also known as AIC model selection.  
+The point of the analysis is to determine the most important variables to use in a model to explain the amount of services used by a client. This paper reviews some descriptive statistics from the data that utilizes AIC to pick the best model.
+
+
+Total Count of Services will be the response variable.  This variable will be identified as TotServ and measures a client consumption of services. This is a quantitative variable. Veteran status is included as vet ...
 
 
 ```{r}
 
-kable(tally(d.pov$hasbenefit), caption = "Table 3: Count of adults in each gender")
+kable(tally(d.pov$hasbenefit), caption = "Table 2: Count of clients with benefits")
+#tried to change names
+#kable(tally(d.pov$hasbenefit, ""  ), caption = "Table 2: Count of clients with benefits")
 
 ```
 
@@ -209,10 +171,15 @@ kable(tally(d.pov$hasbenefit), caption = "Table 3: Count of adults in each gende
 
 ```{r}
 # Now refit the full model with only complete cases
+set.seed(1353)
+data_split_comp <- initial_split(d.complete)
+lr_train_data <- training(data_split_comp)
+lr_test_data <- testing(data_split_comp)
+
 #first global model
   fullModel <- stats::lm(formula = totserv ~ Age_ + race_white + vet
                   + race_native + eth_hispanic + males + dviolencesurvivor
-                  + race2_reported, data=d.complete)
+                  + race2_reported, data=lr_train_data)
 
 options(na.action = "na.fail", width=120)
 #povOutput <- dredge(fullModel,  rank="AIC", fixed = NULL, extra=c("R^2",adjRsq=function(x) summary(x)$adj.r.squared))
@@ -221,7 +188,7 @@ summary(fullModel)
 
 ```
 
-The full model results have an adjustd R-squared value of 0.0699 a p-value that is just over 0.0005.
+The full model results have an adjustd R-squared value of 0.1387 a p-value that is less than 0.0005.
 
 ```{r}
 #povOutput <- dredge(fullModel,  rank="AIC")
@@ -232,12 +199,15 @@ kable(head(povOutput,n=15),caption="Table 6: POV Table", digits=3)
 
 ```
 The global model includes variables selected using the pairs panel. Using the total count of services as the dependent variable, the following independent variables were included: Age, Race_whiet, Veteran status, Race_native, Eth_hispanic, Males, Survivors of domestic violence, and Reporting a Second Race.
-Using the dredge funcintion in the MuMin package, hundreds of models were calculated with these variables. The model with the highest AIC            
+Using the dredge function in the MuMin package, hundreds of models were calculated with these variables. The model with the highest AIC...
+None of these models really look great. The coeffecients seem racist. 
+
+Since the dependent variable is very skewed and is considered 'count' data, a Poisson regression model could improve the validity of a model. 
 
 ```{r}
 #poisson regression
 poisson_model <- glm(totserv ~ Age_  + race_native + 
-    eth_hispanic + dviolencesurvivor + race2_reported, family = "poisson", data = d.complete)
+    eth_hispanic + dviolencesurvivor + race2_reported, family = "poisson", data = lr_train_data)
 
 #view model output
 summary(poisson_model)
@@ -248,8 +218,17 @@ summary(poisson_model)
 we can conduct a Chi-Square goodness of fit test to see if the model fits the data. 
 
 ```{r}
+
+tidy(poisson_model)
+
+anova(poisson_model$fit)
+
+# this one from the lecture, to measure the accuracy: 
+# ```
+metrics(lr_test_data,truth=totserv,estimate=poisson_model)
+
 #chi-square to determine goodness of fit
-pchisq(19909, 271, lower.tail = FALSE)
+#pchisq(19909, 271, lower.tail = FALSE)
 ```
 
 
@@ -261,27 +240,23 @@ pchisq(19909, 271, lower.tail = FALSE)
 # distinguish top 20 percentile in data
 # Use the percentile function to calculate the percentile of "totserv"
 d.tree <- d.complete %>% 
-  dplyr::mutate(per = ecdf(d.complete$totserv)(d.complete$totserv)) %>% 
-  dplyr::mutate(age = if_else(Age_ < 48, 0, 1)) %>% 
-  dplyr::mutate(thiryonemonthsplus = if_else(months_from_start < 31, 0, 1)) %>% 
-  dplyr::mutate(has_income = if_else(income < 0, 0, 1))
+  mutate(per = ecdf(d.complete$totserv)(d.complete$totserv)) %>% 
+  mutate(age = if_else(Age_ < 48, 0, 1)) %>% 
+  mutate(has_income = if_else(income < 0, 0, 1))
   
 # Use if_else() to create a new column based on the percentile to identify the top 20 percent
 d.tree <- d.tree %>% 
-  dplyr::mutate(top20 = if_else(per < 0.8, 0, 1))
+  mutate(top20 = if_else(per < 0.8, 0, 1))
 
-#drop non-binary variables
-d.tree <- d.tree[, !(names(d.tree) %in% c("Age_", "months_from_start", "income", "lenstay_1", "lenstay_2to6", "lenstay_1to3mo", "lenstay_wktomo", "lenstay_1yrplus", "lenstay_3to12mo", "efood_count", "eother_count", "wfood_count", "wother_count", "totserv", "per"))]
+###drop non-binary variables
+#I don't think this is necessary
+#d.tree <- d.tree[, !(names(d.tree) %in% c("Age_", "months_from_start", "income", "lenstay_1", "lenstay_2to6", "lenstay_1to3mo", "lenstay_wktomo", "lenstay_1yrplus", "lenstay_3to12mo", "efood_count", "eother_count", "wfood_count", "wother_count", "totserv", "per"))]
 
 
  # Use `initial_split` to do your training and assessment splits. Use a line, like
-# this one from the lecture, to measure the accuracy: 
-# ```
-# metrics(d.test,truth=air_quality_index,estimate=pred_lm)
 
 
-set.seed(1353)
-data_split <- initial_split(d.tree)
+tree_split <- initial_split(d.tree)
 train_data <- training(tree_split)
 test_data <- testing(tree_split)
 
@@ -310,63 +285,27 @@ fb.model.tree <- decision_tree() %>%
   set_mode("regression")
 
 fb.fit.tree <- fb.model.tree %>%    
-  fit(train_data$totserv ~ Age_ + months_from_start + insured + 
+  fit(train_data$totserv ~ Age_ + insured + 
         hasincome + hasbenefit,
       data=train_data)
 
-text(fit, use.n=TRUE, all=TRUE, cex=0.6)
+# add a column with the prediction 
+
+test_data <- test_data %>% 
+  bind_cols(predict(fb.fit.tree,test_data)) %>% 
+  rename(pred_tree = .pred)
+
+metrics(test_data,truth=totserv,estimate=pred_tree)
+library("rpart.plot")
+
+rpart.plot(fb.fit.tree$fit)
 
 
 ```
 
 
 
-```{r}
-#Third approach
-#create decision tree using rpart
 
-#This is your model!
-fit <- rpart(totserv ~ A, method="class", data=d.complete)
-
-#This line of code assigns the variable called depvariable to the name of the dependent variable
-#in the model above.  We will use this variable below in the ROC curve code.  Change "Class" to the 
-#name of your dependent variable.
-depvariable <- "Class"
-
-#Important:  Please read this.
-#At this point, check the fit variable in RStudio.  If it is >=14 then you are good.
-#If it is 12 or less then you did not build a tree.  Basically R doesn't think that that the tree can
-
-
-#Display decision tree
-plot(fit, uniform = TRUE, margin=.05)
-text(fit, use.n=TRUE, all=TRUE, cex=0.6)
-
-#A fancy plot if you prefer this one instead
-prp(fit, type=2, extra=104)
-
-
-#predict the outcome using the test dataset
-pred1 <- predict(fit, train_data, type="class")
-
-#Place the prediction variable back in the test dataset
-train_data$pred1 <- pred1
-
-#Display Confusion Matrix - this is the correct display of the table. 
-#Change the name of Class to the dependent variable
-rtable<-table(train_data$totserv,train_data$pred1, dnn=c("Actual", "Predicted"))
-rtable
-
-#Display accuracy rate
-#Change the name of Class to the dependent variable
-sum(train_data$Class==pred1)/length(pred1)
-
-#true positive rate:
-tpr <- sum(rtable[2,2])/sum(rtable[2,])
-
-#false positive rate:
-fpr <- sum(rtable[1,2])/sum(rtable[1,])
-```
 
 ##Visualizations
 
@@ -391,51 +330,19 @@ pairs.panels(d.pp)
 ```{r}
 ######
 #ROC Curve
-#The only think you need to change below is: 
-#1) the name of your datasets. For example, boobs.test$ below should be the name of your testing dataset.  
-#2) On lines 99 and 100, the 1 and 0 should reflect the values of your depedent variable.
 ######
 
-# for ROC curve we need probabilties so we can sort boobs.test
-boobs.test$probs <- predict(fit,boobs.test, type="prob")[,2] # returns prob of both cats, just need 1
+# for ROC curve we need probabilities so we can sort test_data
+#test_data$pred_tree <- predict(fit,test_data, type="prob")[,2] # returns prob of both cats, just need 1
 
-roc.data <- data.frame(cutoffs = c(1,sort(unique(boobs.test$probs),decreasing=T)),
+roc.data <- data.frame(cutoffs = c(1,sort(unique(test_data$pred_tree),decreasing=T)),
                        TP.at.cutoff = 0,
                        TN.at.cutoff = 0)
 
 for(i in 1:dim(roc.data)[1]){
   this.cutoff <- roc.data[i,"cutoffs"]
-  roc.data$TP.at.cutoff[i] <- sum(boobs.test[boobs.test$probs >= this.cutoff,depvariable] == malignant)
-  roc.data$TN.at.cutoff[i] <- sum(boobs.test[boobs.test$probs < this.cutoff,depvariable] == benign)
-}
-roc.data$TPR <- roc.data$TP.at.cutoff/max(roc.data$TP.at.cutoff) 
-roc.data$Specificity <- roc.data$TN.at.cutoff/max(roc.data$TN.at.cutoff) 
-roc.data$FPR <- 1 - roc.data$Specificity
-
-with(roc.data,
-     plot(x=FPR,
-          y=TPR,
-          type = "l",
-          xlim=c(0,1),
-          ylim=c(0,1),
-          main="ROC Curve'")     
-)
-abline(c(0,1),lty=2)
-######End ROC code
-
-######
-
-# for ROC curve we need probabilties so we can sort boobs.test
-boobs.test$probs <- predict(fit,boobs.test, type="prob")[,2] # returns prob of both cats, just need 1
-
-roc.data <- data.frame(cutoffs = c(1,sort(unique(boobs.test$probs),decreasing=T)),
-                       TP.at.cutoff = 0,
-                       TN.at.cutoff = 0)
-
-for(i in 1:dim(roc.data)[1]){
-  this.cutoff <- roc.data[i,"cutoffs"]
-  roc.data$TP.at.cutoff[i] <- sum(boobs.test[boobs.test$probs >= this.cutoff,depvariable] == malignant)
-  roc.data$TN.at.cutoff[i] <- sum(boobs.test[boobs.test$probs < this.cutoff,depvariable] == benign)
+  roc.data$TP.at.cutoff[i] <- sum(test_data[test_data$pred_tree >= this.cutoff,"top20"] == 1)
+  roc.data$TN.at.cutoff[i] <- sum(test_data[test_data$pred_tree < this.cutoff,"top20"] == 0)
 }
 roc.data$TPR <- roc.data$TP.at.cutoff/max(roc.data$TP.at.cutoff) 
 roc.data$Specificity <- roc.data$TN.at.cutoff/max(roc.data$TN.at.cutoff) 
