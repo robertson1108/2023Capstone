@@ -26,6 +26,7 @@ library(MuMIn)
 library(rpart)
 library(randomForest)
 library(tidymodels)
+library(car)
 
 knitr::write_bib(c("base","rmarkdown","knitr", #don't change these
                    "NHANES","mosaic","psych","car","MuMIn"), #project specific before the close parenthesis
@@ -68,7 +69,7 @@ These variables may be useful in a linear regression. The sum of services provid
 d.pov <- d.pov %>% 
   mutate(totserv=efood_count+wfood_count+eother_count+wother_count)
 
-hist(d.pov$totserv)
+hist(d.pov$totserv, caption="Graph 1. Histogram for summed service counts by individual")
 
 ```
 
@@ -215,7 +216,42 @@ summary(poisson_model)
 
 ```
 
+It is always improtant to check the assumptions in a model.
+First step is to plot the residuals against the predicted values to check for homoscedasticity and linearity assumptions. 
+
+```{r}
+# Plot the residuals against the predicted values
+plot(lr_train_data$totserv, residuals(poisson_model), xlab = "Predicted values", ylab = "Residuals")
+abline(h = 0, lty = 2)
+
+```
+The shape of the plot shows that the data are biased and are heteroscedastic. 
+
+Next, we can check the normality assumption of the residuals by plotting a histogram and a QQ plot of the residuals. 
+
+```{r}
+# Plot a histogram of the residuals
+hist(residuals(poisson_model), main = "Histogram of residuals")
+
+# Plot a QQ plot of the residuals
+qqnorm(residuals(poisson_model))
+qqline(residuals(poisson_model))
+```
+I think these plots show that the data is non-normal. 
+
+Finally, we can check for multicollinearity by calculating the variance inflation factor (VIF) for each predictor variable using the car package in R
+
+```{r}
+# Load the car package
+# Calculate the VIF for each predictor variable
+vif(poisson_model)
+
+```
+
+
+
 we can conduct a Chi-Square goodness of fit test to see if the model fits the data. 
+
 
 ```{r}
 
