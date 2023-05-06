@@ -191,7 +191,7 @@ summary(fullModel)
 The full model results have an adjustd R-squared value of 0.1387 a p-value that is less than 0.0005.
 
 ```{r}
-#povOutput <- dredge(fullModel,  rank="AIC")
+povOutput <- dredge(fullModel,  rank="AIC")
 
 MuMIn::dredge(fullModel)
 
