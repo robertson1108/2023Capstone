@@ -14,7 +14,6 @@ nocite: '@*'
 knitr::opts_chunk$set(echo = FALSE)
 options(show.signif.stars = FALSE)
 library(knitr)
-library(NHANES)
 library(readr)
 library(mosaic)
 library(heplots)
@@ -155,14 +154,14 @@ The point of this analysis is to use Akaike's "An Information Criterion" method 
 The point of the analysis is to determine the most important variables to use in a model to explain the amount of services used by a client. This paper reviews some descriptive statistics from the data that utilizes AIC to pick the best model.
 
 
-Total Count of Services will be the response variable.  This variable will be identified as TotServ and measures a client consumption of services. This is a quantitative variable. Veteran status is included as vet ...
+Total Count of Services will be the response variable.  This variable will be identified as TotServ and measures a client consumption of services. This is a quantitative variable. 
 
 
 ```{r}
 
-kable(tally(d.pov$hasbenefit), caption = "Table 2: Count of clients with benefits")
+kable(tally(d.pov$Age_), caption = "Table 2: Count of client Ages")
 #tried to change names
-#kable(tally(d.pov$hasbenefit, ""  ), caption = "Table 2: Count of clients with benefits")
+#kable(tally(d.pov$Age_, ""  ), caption = "Table 2: Count of clients ages")
 
 ```
 
@@ -257,14 +256,10 @@ we can conduct a Chi-Square goodness of fit test to see if the model fits the da
 
 tidy(poisson_model)
 
-anova(poisson_model$fit)
 
-# this one from the lecture, to measure the accuracy: 
-# ```
-metrics(lr_test_data,truth=totserv,estimate=poisson_model)
 
 #chi-square to determine goodness of fit
-#pchisq(19909, 271, lower.tail = FALSE)
+pchisq(19909, 271, lower.tail = FALSE)
 ```
 
 
@@ -272,75 +267,189 @@ metrics(lr_test_data,truth=totserv,estimate=poisson_model)
 ##Decision Tree
 
 ```{r}
-#first approach, Random Forest
-# distinguish top 20 percentile in data
-# Use the percentile function to calculate the percentile of "totserv"
-d.tree <- d.complete %>% 
-  mutate(per = ecdf(d.complete$totserv)(d.complete$totserv)) %>% 
-  mutate(age = if_else(Age_ < 48, 0, 1)) %>% 
-  mutate(has_income = if_else(income < 0, 0, 1))
-  
-# Use if_else() to create a new column based on the percentile to identify the top 20 percent
-d.tree <- d.tree %>% 
-  mutate(top20 = if_else(per < 0.8, 0, 1))
 
-###drop non-binary variables
-#I don't think this is necessary
-#d.tree <- d.tree[, !(names(d.tree) %in% c("Age_", "months_from_start", "income", "lenstay_1", "lenstay_2to6", "lenstay_1to3mo", "lenstay_wktomo", "lenstay_1yrplus", "lenstay_3to12mo", "efood_count", "eother_count", "wfood_count", "wother_count", "totserv", "per"))]
+#Data Transformation
+#Add percentage variable
+#Deal with null values
+
+d.pov <- d.pov %>% 
+  mutate(per = ecdf(d.pov$totserv)(d.pov$totserv))
+
+d.rf <-   select(d.pov, Age_,
+         females, 
+         transgender, 
+         males, 
+         vet, 
+         race_white, 
+         race_black, 
+         race_native,
+         race_asian, 
+         eth_hispanic, 
+         dviolencesurvivor, 
+         insured, 
+         disabled, 
+         income, 
+         headofhouse, 
+         race2_reported, 
+         hasincome, 
+         hasbenefit,
+         per) 
+         
+rf.complete.sum <- complete.cases(d.rf)
+summary(rf.complete.sum)
+
+d.tree<- d.rf[complete.cases(d.rf),]
 
 
- # Use `initial_split` to do your training and assessment splits. Use a line, like
 
+library(randomForestExplainer)
+
+```
+
+```{r}
+
+ # Use `initial_split` to do your training and assessment splits. 
+set.seed(2023)
 
 tree_split <- initial_split(d.tree)
 train_data <- training(tree_split)
 test_data <- testing(tree_split)
 
-
-
-# Set the number of trees in the forest
-ntree <- 500
-
-# Create a random forest model using the train_data data frame
-rf_model <- randomForest(top20 ~ ., data = train_data, ntree = ntree)
-
-# Print the summary of the model
-print(rf_model)
-
-
-
-
 ```
 
 ```{r}
-#Decision Tree 
-#Second approach
+#Create forest and print call 
 
-fb.model.tree <- decision_tree() %>%  
-  set_engine("rpart") %>% 
-  set_mode("regression")
+forest <- randomForest(per ~ ., data = train_data, localImp = TRUE)
 
-fb.fit.tree <- fb.model.tree %>%    
-  fit(train_data$totserv ~ Age_ + insured + 
-        hasincome + hasbenefit,
-      data=train_data)
+forest
+```
 
-# add a column with the prediction 
+Try to extract top performing tree. 
 
-test_data <- test_data %>% 
-  bind_cols(predict(fb.fit.tree,test_data)) %>% 
-  rename(pred_tree = .pred)
+```{r}
+# Extract individual trees from the forest
+trees <- forest$forest
 
-metrics(test_data,truth=totserv,estimate=pred_tree)
-library("rpart.plot")
+# Evaluate each tree's performance on a validation set
+mse <- rep(NA, length(trees))
+for (i in seq_along(trees)) {
+  tree_pred <- predict(trees[[i]], newdata = test_data)
+  mse[i] <- mean((test_data$per - tree_pred)^2)
+}
 
-rpart.plot(fb.fit.tree$fit)
+# Find the index of the best-performing tree
+best_tree_index <- which.min(mse)
 
-
+# Extract the best-performing tree from the forest
+best_tree <- trees[[best_tree_index]]
 ```
 
 
 
+To obtain the distribution of minimal depth we pass our forest to the function min_depth_distribution and store the result, which contains the following columns (we save this and load it from memory as it takes a while):
+
+
+```{r}
+
+min_depth_frame <- min_depth_distribution(forest)
+save(min_depth_frame, file = "min_depth_frame.rda")
+
+load("min_depth_frame.rda")
+head(min_depth_frame, n = 10)
+
+```
+
+
+Next, we pass it to the function plot_min_depth_distribution and under default settings obtain obtain a plot of the distribution of minimal depth for top ten variables according to mean minimal depth calculated using top trees (mean_sample = "top_trees"). We could also pass our forest directly to the plotting function but if we want to make more than one plot of the minimal depth distribution is more efficient to pass the min_depth_frame to the plotting function so that it will not be calculated again for each plot (this works similarly for other plotting functions of randomForestExplainer).
+
+```{r}
+# plot_min_depth_distribution(forest) # gives the same result as below but takes longer
+plot_min_depth_distribution(min_depth_frame)
+```
+
+To further explore variable importance measures we pass our forest to measure_importance function and get the following data frame 
+
+```{r}
+importance_frame <- measure_importance(forest)
+save(importance_frame, file = "importance_frame.rda")
+load("importance_frame.rda")
+importance_frame
+```
+
+Below we present the result of plot_multi_way_importance for the default values of x_measure and y_measure, which specify measures to use on x
+ and y-axis, and the size of points reflects the number of nodes split on the variable. For problems with many variables we can restrict the plot to only those used for splitting in at least min_no_of_trees trees. By default 10 top variables in the plot are highlighted in blue and labeled (no_of_labels) – these are selected using the function important_variables, i.e. using the sum of rankings based on importance measures used in the plot (more variables may be labeled if ties occur).
+
+```{r}
+# plot_multi_way_importance(forest, size_measure = "no_of_nodes") # gives the same result as below but takes longer
+plot_multi_way_importance(importance_frame, size_measure = "no_of_nodes")
+```
+
+
+
+```{r}
+plot_multi_way_importance(importance_frame, x_measure = "mse_increase", y_measure = "node_purity_increase", size_measure = "p_value", no_of_labels = 5)
+
+```
+
+
+Compare measures using ggpairs
+Generally, the multi-way importance plot offers a wide variety of possibilities so it can be hard to select the most informative one. One idea of overcoming this obstacle is to first explore relations between different importance measures to then select three that least agree with each other and use them in the multi-way importance plot to select top variables. The first is easily done by plotting selected importance measures pairwise against each other using plot_importance_ggpairs as below. One could of course include all seven measures in the plot but by default p-value and the number of trees are excluded as both carry similar information as the number of nodes.
+
+```{r}
+# plot_importance_ggpairs(forest) # gives the same result as below but takes longer
+plot_importance_ggpairs(importance_frame)
+
+```
+
+
+Compare different rankings
+In addition to scatter plots and correlation coefficients, the ggpairs plot also depicts density estimate for each importance measure – all of which are in this case very skewed. An attempt to eliminate this feature by plotting rankings instead of raw measures is implemented in the function plot_importance_rankings that also includes the fitted LOESS curve in each plot.
+
+```{r}
+# plot_importance_rankings(forest) # gives the same result as below but takes longer
+plot_importance_rankings(importance_frame)
+```
+
+Variable interactions
+Conditional minimal depth
+After selecting a set of most important variables we can investigate interactions with respect to them, i.e. splits appearing in maximal subtrees with respect to one of the variables selected. To extract the names of 5 most important variables according to both the mean minimal depth and number of trees in which a variable appeared, we pass our importance_frame to the function important_variables as follows:
+
+```{r}
+# (vars <- important_variables(forest, k = 5, measures = c("mean_min_depth", "no_of_trees"))) # gives the same result as below but takes longer
+(vars <- important_variables(importance_frame, k = 5, measures = c("mean_min_depth", "no_of_trees")))
+```
+We pass the result together with or forest to the min_depth_interactions function to obtain a data frame containing information on mean conditional minimal depth of variables with respect to each element of vars (missing values are filled analogously as for unconditional minimal depth, in one of three ways specified by mean_sample). If we would not specify the vars argument then the vector of conditioning variables would be by default obtained using important_variables(measure_importance(forest)).
+
+```{r}
+interactions_frame <- min_depth_interactions(forest, vars)
+save(interactions_frame, file = "interactions_frame.rda")
+load("interactions_frame.rda")
+head(interactions_frame[order(interactions_frame$occurrences, decreasing = TRUE), ])
+```
+
+Then, we pass our interactions_frame to the plotting function plot_min_depth_interactions and obtain the following:
+
+```{r}
+# plot_min_depth_interactions(forest) # calculates the interactions_frame for default settings so may give different results than the function below depending on our settings and takes more time
+plot_min_depth_interactions(interactions_frame)
+```
+
+Prediction of the forest on a grid
+To further investigate the most frequent interaction lstat:rm we use the function plot_predict_interaction to plot the prediction of our forest on a grid of values for the components of each interaction. The function requires the forest, training data, variable to use on x
+ and y
+-axis, respectively. In addition, one can also decrease the number of points in both dimensions of the grid from the default of 100 in case of insufficient memory using the parameter grid.
+```{r}
+plot_predict_interaction(forest, train_data, "race2_reported", "income")
+```
+
+
+Explain the forest
+The explain_forest() function is the flagship function of the randomForestExplainer package, as it takes your random forest and produces a html report that summarizes all basic results obtained for the forest with the new package.
+
+```{r}
+explain_forest(forest, interactions = TRUE, data = train_data)
+```
 
 
 ##Visualizations
